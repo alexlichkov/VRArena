@@ -105,14 +105,27 @@ public class MatchHUD : MonoBehaviour
 
     private string GetPhaseDisplayName(MatchManager.MatchState state)
     {
-        // Можно локализовать/переименовать как угодно.
+        // Здесь имена, как они видятся игроку.
         switch (state)
         {
-            case MatchManager.MatchState.Preparation: return "Подготовка";
-            case MatchManager.MatchState.Combat:      return "Бой";
-            case MatchManager.MatchState.RoundEnd:    return "Завершение раунда";
-            case MatchManager.MatchState.Idle:       
-            default:                                  return "Ожидание";
+            case MatchManager.MatchState.Preparation:
+                return "Подготовка (баррикады)";
+
+            case MatchManager.MatchState.Traps:
+                return "Фаза ловушек";
+
+            case MatchManager.MatchState.Combat:
+                return "Бой";
+
+            case MatchManager.MatchState.RoundEnd:
+                return "Завершение раунда";
+
+            case MatchManager.MatchState.MatchOver:
+                return "Матч завершён";
+
+            case MatchManager.MatchState.Idle:
+            default:
+                return "Ожидание";
         }
     }
 }

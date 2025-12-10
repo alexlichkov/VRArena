@@ -139,7 +139,7 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!114 &-2514258645902828593
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -152,5 +152,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b435c74419a8b6746bf76d42e6d66f14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projectile
-  _damage: 10
-  _maxLifetime: 5
+  damage: 10
+  lifeTime: 5
+  logHits: 0

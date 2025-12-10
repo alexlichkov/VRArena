@@ -1,82 +1,96 @@
 using UnityEngine;
 
 /// <summary>
-/// Базовый снаряд для оружия.
-/// 
-/// Ответственность:
-/// - задать начальную скорость (Launch);
-/// - нанести урон цели, если у неё есть IDamageable;
-/// - удалить себя через заданное время жизни или при попадании.
+/// Базовый снаряд:
+/// - летит по физике (Rigidbody);
+/// - при первом столкновении ищет IDamageable на цели и наносит урон;
+/// - уничтожает себя после попадания или по таймеру.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class Projectile : MonoBehaviour
+[RequireComponent(typeof(Collider))]
+public sealed class Projectile : MonoBehaviour
 {
     [Header("Damage")]
-    [SerializeField, Min(0f)]
-    private float _damage = 10f;
+    [SerializeField, Min(0.1f)]
+    private float damage = 10f;
 
     [Header("Lifetime")]
     [SerializeField, Min(0.1f)]
-    private float _maxLifetime = 5f;
+    private float lifeTime = 5f;
 
-    private Rigidbody _rigidbody;
-    private bool _launched;
+    [Header("Debug")]
+    [SerializeField]
+    private bool logHits = false;
+
+    private Rigidbody _rb;
+    private bool _hasHit;
 
     private void Awake()
     {
-        _rigidbody = GetComponent<Rigidbody>();
-        if (_rigidbody == null)
+        _rb = GetComponent<Rigidbody>();
+        if (_rb == null)
         {
-            Debug.LogError($"[{nameof(Projectile)}] Rigidbody не найден на {name}.", this);
+            Debug.LogError($"[{nameof(Projectile)}] Нет Rigidbody на {name}.", this);
+        }
+
+        // ВАЖНО: для OnCollisionEnter коллайдер должен быть НЕ IsTrigger.
+        var col = GetComponent<Collider>();
+        if (col == null)
+        {
+            Debug.LogError($"[{nameof(Projectile)}] Нет Collider на {name}.", this);
         }
     }
 
     private void OnEnable()
     {
-        // Подстраховка: уничтожим снаряд, если что-то пошло не так.
-        // Для пуллинга можно будет заменить на "деактивировать", а не Destroy.
-        Invoke(nameof(SelfDestruct), _maxLifetime);
-    }
-
-    private void OnDisable()
-    {
-        CancelInvoke(nameof(SelfDestruct));
+        // Самоуничтожение по таймеру, если никуда не попал
+        if (lifeTime > 0f)
+        {
+            Destroy(gameObject, lifeTime);
+        }
     }
 
     /// <summary>
-    /// Запуск снаряда в заданном направлении и с указанной скоростью.
-    /// Обычно вызывается оружием сразу после Instantiate.
+    /// Unity-коллизия (НЕ триггер). Срабатывает, когда снаряд ударяется о что-то.
     /// </summary>
-    public void Launch(Vector3 direction, float speed)
-    {
-        if (_rigidbody == null)
-            return;
-
-        _launched = true;
-        _rigidbody.linearVelocity = direction.normalized * speed;
-    }
-
     private void OnCollisionEnter(Collision collision)
     {
-        if (!_launched)
-            return;
+        if (_hasHit)
+            return; // чтобы не дамажить несколько раз по рикошетам
 
-        // Пытаемся найти IDamageable на цели (на самом объекте или его родителе).
-        var damageable = collision.collider.GetComponentInParent<IDamageable>();
-        if (damageable != null)
+        _hasHit = true;
+
+        var other = collision.collider;
+        var contact = collision.GetContact(0);
+
+        if (logHits)
         {
-            var contact = collision.GetContact(0);
-            damageable.ApplyDamage(_damage, contact.point, contact.normal);
+            Debug.Log(
+                $"[{nameof(Projectile)}] Hit {other.name} at {contact.point}, " +
+                $"normal={contact.normal}, damage={damage}",
+                this);
         }
 
-        // В простом прототипе после первого же попадания уничтожаем снаряд.
-        SelfDestruct();
+        // Ищем IDamageable на цели или её родителях
+        var damageable = other.GetComponentInParent<IDamageable>();
+        if (damageable != null)
+        {
+            damageable.ApplyDamage(damage, contact.point, contact.normal);
+        }
+
+        // После попадания уничтожаем снаряд
+        Destroy(gameObject);
     }
 
-    private void SelfDestruct()
+    /// <summary>
+    /// Позволяет внешнему коду задать начальную скорость.
+    /// Удобно вызывать из оружия.
+    /// </summary>
+    public void SetInitialVelocity(Vector3 velocity)
     {
-        // Здесь можно будет заменить на Object Pool (деактивация),
-        // когда начнёшь оптимизировать.
-        Destroy(gameObject);
+        if (_rb != null)
+        {
+            _rb.linearVelocity = velocity;
+        }
     }
 }
